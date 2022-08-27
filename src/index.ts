@@ -1,11 +1,11 @@
-import type { EventBridgeHandler } from "aws-lambda";
+import type { Handler } from "aws-lambda";
 
 import * as sqs from "./sqs";
 import * as espn from "./espn";
 
 const day = 1000 * 60 * 60 * 24 * 2;
 
-export interface Detail {
+export interface Event {
   /** The polling interval in milliseconds. */
   interval: number;
 
@@ -20,23 +20,28 @@ export interface Detail {
 
   /** A token used to authenticate with ESPN FF API. */
   espnS2: string;
+
+  /**
+   * Date to check for game events on.
+   * This option is mainly intended for testing.
+   */
+  to?: string;
 }
 
-export const handler: EventBridgeHandler<"", Detail, void> = async ({
-  detail,
-}) => {
-  const to = new Date();
+export const handler: Handler<Event, void> = async (event) => {
+  const to = event.to ? new Date(event.to) : new Date();
   const from = new Date(to.getTime() - day);
-  const isFirstRun = Date.now() - detail.start < detail.interval * 1.5;
-  const after = isFirstRun ? from : new Date(Date.now() - detail.interval);
+  const isFirstRun = Date.now() - event.start < event.interval * 1.5;
+  const after = isFirstRun ? from : new Date(Date.now() - event.interval);
 
   const plays = await espn.getRelativePlays({
-    ...detail,
+    ...event,
     from,
     to,
     after,
   });
   if (plays.length) {
-    await sqs.sendMessage({ ...detail, plays });
+    console.log(plays.map((p) => p.text));
+    await sqs.sendMessage({ ...event, plays });
   }
 };

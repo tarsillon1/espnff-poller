@@ -14,6 +14,21 @@ Resources:
       Environment:
         Variables:
           OUT_QUEUE_NAME: ESPNRelativePlays
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            Effect: Allow
+            Action:
+              - sqs:Send*
+              - sqs:Get*
+            Resource: !GetAtt ESPNRelativePlaysQueue.Arn
+
+  EventBridgePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ESPNFantasyFootballPoller
+      Principal: events.amazonaws.com
 
   ESPNRelativePlaysQueue:
     Type: AWS::SQS::Queue
